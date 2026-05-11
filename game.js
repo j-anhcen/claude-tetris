@@ -15,6 +15,19 @@ const COLORS = [
   '#ffb74d', // L - orange
 ];
 
+const COLORS_LIGHT = [
+  null,
+  '#0891b2', // I - dark cyan
+  '#ca8a04', // O - dark yellow
+  '#9333ea', // T - dark purple
+  '#16a34a', // S - dark green
+  '#dc2626', // Z - dark red
+  '#2563eb', // J - blue
+  '#ea580c', // L - dark orange
+];
+
+let activeColors = COLORS;
+
 const PIECES = [
   null,
   [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], // I
@@ -158,7 +171,7 @@ function updateHUD() {
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
+  const color = activeColors[colorIndex];
   context.globalAlpha = alpha ?? 1;
   context.fillStyle = color;
   context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
@@ -169,7 +182,7 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
 }
 
 function drawGrid() {
-  ctx.strokeStyle = '#22222e';
+  ctx.strokeStyle = document.body.classList.contains('light-mode') ? '#e0e0e8' : '#22222e';
   ctx.lineWidth = 0.5;
   for (let c = 1; c < COLS; c++) {
     ctx.beginPath();
@@ -300,5 +313,13 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  const isLight = document.body.classList.toggle('light-mode');
+  activeColors = isLight ? COLORS_LIGHT : COLORS;
+  document.getElementById('theme-toggle').textContent = isLight ? '✔ Dark' : '☀ Light';
+  if (!gameOver && !paused) draw();
+  drawNext();
+});
 
 init();
