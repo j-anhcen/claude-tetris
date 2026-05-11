@@ -1,0 +1,115 @@
+name: Claude Issue Triage
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  triage:
+    # Skip when a bot edits an issue to prevent re-trigger loops
+    if: github.event.sender.type != 'Bot'
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # Idempotent: creates label if absent, updates color if present.
+      # Runs before Claude so labels are guaranteed to exist when applied.
+      - name: Ensure Tetris labels exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "performance"  --color "0052cc" --description "Performance or speed issues"                      --repo ${{ github.repository }} --force
+          gh label create "rendering"    --color "e4e669" --description "Canvas / visual rendering issues"                 --repo ${{ github.repository }} --force
+          gh label create "controls"     --color "c5def5" --description "Keyboard input or control handling"               --repo ${{ github.repository }} --force
+          gh label create "scoring"      --color "bfd4f2" --description "Score, lines, or level calculation"               --repo ${{ github.repository }} --force
+          gh label create "game-logic"   --color "d4c5f9" --description "Core game mechanics (collision, rotation, etc.)"  --repo ${{ github.repository }} --force
+
+      - name: Run Claude Issue Triage
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--allowed-tools Bash(gh *)'
+          prompt: |
+            You are triaging a GitHub issue for a Tetris game repository.
+
+            ISSUE DETAILS:
+            - Repository: ${{ github.repository }}
+            - Issue number: ${{ github.event.issue.number }}
+            - Title: ${{ github.event.issue.title }}
+            - Body:
+            ${{ github.event.issue.body }}
+
+            THE CODEBASE (zero-dependency browser Tetris, three files):
+            - index.html: canvas #board (300x600), canvas #next-canvas (120x120), HUD #score #lines #level, overlay #overlay
+            - style.css: dark arcade theme, CSS Grid/Flexbox
+            - game.js (~305 lines):
+              - Constants: COLS=10, ROWS=20, BLOCK=30, COLORS[8], PIECES[8], LINE_SCORES=[0,100,300,500,800]
+              - State: board (2D array), current/next piece {type,shape,x,y,color}, score, lines, level, paused, gameOver, dropInterval, dropAccum, animId
+              - Functions: collide(), rotateCW(), tryRotate() (wall kicks ±1 ±2), merge(), clearLines(), ghostY(), hardDrop(), softDrop(), lockPiece(), spawn(), draw(), drawNext(), drawBlock(), drawGrid(), updateHUD(), endGame(), togglePause(), loop(), init()
+              - Scoring: LINE_SCORES[cleared] * level; hard drop +2/row; soft drop +1/row
+              - Level: Math.floor(lines/10)+1; dropInterval=Math.max(100, 1000-(level-1)*90) ms
+              - Controls: ArrowLeft/Right (move), ArrowUp/KeyX (rotate), ArrowDown (soft drop), Space (hard drop), P (pause)
+
+            Complete all three steps below in order.
+
+            STEP 1 — APPLY LABELS
+            Choose all applicable labels from this exact list (use the exact strings):
+              bug, enhancement, question, documentation, performance, rendering, controls, scoring, game-logic
+
+            Rules:
+            - "bug": defect or incorrect behavior in existing code
+            - "enhancement": new feature request or improvement to existing behavior
+            - "question": asking how something works, not reporting a defect
+            - "documentation": about docs, comments, or README
+            - "performance": frame rate, drop speed, lag, requestAnimationFrame issues
+            - "rendering": canvas drawing, colors, ghost piece, drawBlock/drawGrid/draw/drawNext
+            - "controls": keyboard input, key bindings, ArrowLeft/Right/Up/Down/Space/P behavior
+            - "scoring": score calculation, line clear points, level progression, LINE_SCORES, clearLines()
+            - "game-logic": collision detection, rotation, wall kicks, piece spawning, lockPiece, collide(), tryRotate()
+
+            Run:
+              gh issue edit ${{ github.event.issue.number }} --add-label "label1,label2" --repo ${{ github.repository }}
+
+            STEP 2 — REMOVE STALE DIAGNOSTIC COMMENT
+            Check for a previous diagnostic comment and delete it to avoid duplicates:
+              gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments --jq '.[] | select(.body | startswith("<!-- claude-diagnostic -->")) | .id'
+            If one or more IDs are returned, delete each:
+              gh api --method DELETE repos/${{ github.repository }}/issues/comments/{comment_id}
+
+            STEP 3 — POST DIAGNOSTIC COMMENT
+            Post a new comment using EXACTLY this format:
+
+            gh issue comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "<!-- claude-diagnostic -->
+            ## Tetris Issue Diagnostic
+
+            **Summary:** [One sentence describing the problem or request]
+
+            ### Problem Analysis
+            [2-4 sentences. Reference specific functions, variables, or DOM elements from the codebase above. Be concrete — e.g. 'The clearLines() function increments lines but does not recalculate dropInterval when level changes, causing...'. Do not be vague.]
+
+            ### Affected Components
+            - \`[file or function name]\` — [why it is relevant to this issue]
+            - \`[file or function name]\` — [why it is relevant to this issue]
+
+            ### Suggested Implementation Approach
+            1. [First concrete step referencing actual function/variable names]
+            2. [Second concrete step]
+            3. [Optional third step if needed]
+
+            ### Labels Applied
+            [Labels you applied formatted as backtick-wrapped strings]
+
+            ---
+            *Auto-generated by Claude · [Workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})*"
