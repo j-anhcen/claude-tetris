@@ -193,21 +193,29 @@ kbd {
   align-items: center;
 }
 
-#overlay-title {
+.overlay-box.hidden {
+  display: none;
+}
+
+.overlay-title {
   font-size: 28px;
   font-weight: 800;
   letter-spacing: 4px;
   color: var(--overlay-title);
 }
 
-#overlay-score {
+.pause-title {
+  color: var(--value-color);
+}
+
+.overlay-score {
   font-family: 'Courier New', Courier, monospace;
   font-size: 14px;
   color: var(--overlay-score);
 }
 
-#restart-btn {
-  margin-top: 8px;
+.btn {
+  margin-top: 4px;
   background: var(--btn-bg);
   color: var(--btn-color);
   border: none;
@@ -218,8 +226,65 @@ kbd {
   cursor: pointer;
   letter-spacing: 1px;
   transition: background 0.15s;
+  width: 160px;
 }
 
-#restart-btn:hover {
+.btn:hover {
   background: var(--btn-hover);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--btn-bg);
+  border: 2px solid var(--btn-bg);
+}
+
+.btn-secondary:hover {
+  background: var(--btn-bg);
+  color: var(--btn-color);
+}
+
+/* ---- Overlay controls section ---- */
+.overlay-controls {
+  margin-top: 4px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.overlay-controls ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.overlay-controls li {
+  font-size: 12px;
+  color: var(--controls-color);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ---- Nivel inicial selector ---- */
+.overlay-level {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+#start-level-select {
+  background: var(--kbd-bg);
+  color: var(--color);
+  border: 1px solid var(--kbd-border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 80px;
+  text-align: center;
 }
