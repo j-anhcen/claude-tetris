@@ -55,8 +55,16 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const nameInputSection = document.getElementById('name-input-section');
+const playerNameInput = document.getElementById('player-name');
+const submitScoreBtn = document.getElementById('submit-score-btn');
+const leaderboardSection = document.getElementById('leaderboard-section');
+const leaderboardBody = document.getElementById('leaderboard-body');
+const resetScoresBtn = document.getElementById('reset-scores-btn');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+const LS_KEY = 'tetris_scores';
+
+let board, current, next, score, lines, level, maxCombo, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -122,6 +130,7 @@ function clearLines() {
   if (cleared) {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
+    if (cleared > maxCombo) maxCombo = cleared;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
     updateHUD();
@@ -234,12 +243,41 @@ function drawNext() {
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
 }
 
+function loadScores() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveScore(entry) {
+  const scores = loadScores();
+  scores.push(entry);
+  scores.sort((a, b) => b.score - a.score);
+  scores.splice(5);
+  localStorage.setItem(LS_KEY, JSON.stringify(scores));
+  return scores;
+}
+
+function renderLeaderboardWithHighlight(scores, newIdx) {
+  leaderboardBody.innerHTML = '';
+  scores.forEach((entry, i) => {
+    const tr = document.createElement('tr');
+    if (i === newIdx) tr.classList.add('new-entry');
+    tr.innerHTML = `<td>${i + 1}</td><td>${entry.name}</td><td>${entry.score.toLocaleString()}</td><td>${entry.combo}</td><td>${entry.lines}</td>`;
+    leaderboardBody.appendChild(tr);
+  });
+  leaderboardSection.classList.remove('hidden');
+}
+
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+  nameInputSection.classList.remove('hidden');
+  leaderboardSection.classList.add('hidden');
+  playerNameInput.value = '';
   overlay.classList.remove('hidden');
+  playerNameInput.focus();
 }
 
 function togglePause() {
@@ -278,6 +316,7 @@ function init() {
   score = 0;
   lines = 0;
   level = 1;
+  maxCombo = 0;
   paused = false;
   gameOver = false;
   dropInterval = 1000;
@@ -286,6 +325,8 @@ function init() {
   next = randomPiece();
   spawn();
   updateHUD();
+  nameInputSection.classList.add('hidden');
+  leaderboardSection.classList.add('hidden');
   overlay.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
@@ -317,6 +358,26 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+function submitScore() {
+  const name = playerNameInput.value.trim() || 'AAA';
+  const entry = { name, score, combo: maxCombo, lines };
+  nameInputSection.classList.add('hidden');
+  const scores = saveScore(entry);
+  const newIdx = scores.findIndex(e => e.name === entry.name && e.score === entry.score && e.combo === entry.combo && e.lines === entry.lines);
+  renderLeaderboardWithHighlight(scores, newIdx);
+}
+
+submitScoreBtn.addEventListener('click', submitScore);
+
+playerNameInput.addEventListener('keydown', e => {
+  if (e.code === 'Enter') submitScore();
+});
+
+resetScoresBtn.addEventListener('click', () => {
+  localStorage.removeItem(LS_KEY);
+  renderLeaderboardWithHighlight([], -1);
+});
 
 document.getElementById('theme-toggle').addEventListener('click', () => {
   const isLight = document.body.classList.toggle('light-mode');

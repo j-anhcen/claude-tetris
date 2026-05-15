@@ -52,6 +52,26 @@
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
+        <div id="name-input-section" class="hidden">
+          <input id="player-name" type="text" maxlength="12" placeholder="Tu nombre" />
+          <button id="submit-score-btn">Guardar</button>
+        </div>
+        <div id="leaderboard-section" class="hidden">
+          <p class="leaderboard-title">TABLA DE PUNTAJES</p>
+          <table id="leaderboard-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nombre</th>
+                <th>Score</th>
+                <th>Combo</th>
+                <th>Líneas</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-body"></tbody>
+          </table>
+          <button id="reset-scores-btn">Borrar tabla</button>
+        </div>
         <button id="restart-btn">Reiniciar</button>
       </div>
     </div>
